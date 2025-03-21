@@ -1,0 +1,33 @@
+{
+    "Emiliano Roldán": [
+        {
+            "producto": "Producto Test",
+            "codigo": "WRG32GE",
+            "vencimiento": "31/12/2025"
+        },
+        {
+            "producto": "Producto Test",
+            "codigo": "W346SSE",
+            "vencimiento": "31/12/2025"
+        }
+    ],
+    "Nahuel Sosa": [
+        {
+            "producto": "Producto Test",
+            "codigo": "RK23SC2",
+            "vencimiento": "31/12/2025"
+        },
+        {
+            "producto": "Producto Test",
+            "codigo": "FGD45TG",
+            "vencimiento": "31/12/2025"
+        }
+    ],
+    "": [
+        {
+            "producto": "Producto Test",
+            "codigo": "GEN001",
+            "vencimiento": "31/12/2025"
+        }
+    ]
+}

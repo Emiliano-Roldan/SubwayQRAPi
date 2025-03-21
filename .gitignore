@@ -1,0 +1,11 @@
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Archivos generados por PyInstaller u otros builds
+build/
+dist/
+log/
+*.spec
+*.toc
+*.zip
