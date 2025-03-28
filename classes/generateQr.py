@@ -123,12 +123,17 @@ class qr:
                 result = [{**dict(zip(columns, row))} for row in result]
                 return result
             elif textQr != 'ALL':
-                result = QueryExecutor.execute_query(f"SELECT idpromocion, status, amount_burn FROM qr_data WHERE textQr = '{textQr}'")
+                result = QueryExecutor.execute_query(f"SELECT idpromocion, qr.status, amount_burn, pp.id_product, pp.amount_prod, pp.price_prod FROM qr_data qr INNER JOIN product_promotions pp ON qr.idpromocion = pp.id_promotion  WHERE textQr = '{textQr}'")
                 self.conn.disconnect()
-                columns = ["idpromocion", "status", "amount_burn"]
+                columns = ["idpromocion", "status", "amount_burn", "id_product", "amount_prod", "price_prod"]
                 result = [{**dict(zip(columns, row))} for row in result]
-                if result:
-                    return result[0], 200
+                
+                if len(result) == 1:
+                    result = result[0]
+                    if result['status']:
+                        return result, 200
+                    else:
+                        return jsonify(error=f"El QR {textQr} esta vencido o bloqueado"), 404
                 else:
                     return jsonify(error=f"El QR {textQr} no existe."), 404
             else:
@@ -153,7 +158,6 @@ class qr:
     def insertQrlog(self, store, cash_desk, id_qr):
         try:
             id_promotion_result = self.getQR(textQr=id_qr)
-            
             if id_promotion_result[1] != 404:
                 from datetime import datetime
                 id_promotion = id_promotion_result[0]["idpromocion"]
@@ -183,7 +187,7 @@ class qr:
 
                             # Query para bloquear la promocion.
                             if burned_qr_promotion == amount_qr-1:
-                                product = self.products.getproducts(id_promotion=id_promotion)
+                                #product = self.products.getproducts(id_promotion=id_promotion)
                                 DataManipulator.update(f"UPDATE promotions SET status = 0  WHERE id = {id_promotion}")
                                 if qr_type == 1:
                                     DataManipulator.update(f"UPDATE qr_data SET status = 0 WHERE textQR = '{id_qr}'")
@@ -193,14 +197,15 @@ class qr:
                                 DataManipulator.update(f"UPDATE qr_data SET status = 0 WHERE textQR = '{id_qr}'")
 
                             self.conn.disconnect()
-                            logger.info(id_promotion)
-                            return product
+                            #logger.info(id_promotion)
+                            #return product, 200
+                            return jsonify(mensaje=True), 200
                     else:
                         return jsonify(error="QR Vencido o bloqueado."), 404
                 else:
                     return jsonify(error=f"La promoción {id_promotion} no se encuentra activa."), 404
             else:
-                return jsonify(error=f"El QR {id_qr} no existe."), 404   
+                return jsonify(error=f"El QR {id_qr} no existe o esta bloqueado"), 404   
         except Exception as e:
             logger.error(f"InsertQr - Error: {e}", exc_info=True)  # Log del error con traza
             return jsonify(error=f"Error interno: {e}"), 500        
