@@ -19,9 +19,9 @@ class employees:
             pyodbc_connection = self.conn.connection
             QueryExecutor = self.cs.SQLServerQueryExecutor(pyodbc_connection)
             if id:
-                result = QueryExecutor.execute_query(f"SELECT * FROM employees WHERE status = 1 AND id = {id}")
+                result = QueryExecutor.execute_query(f"SELECT * FROM employees WHERE id = {id}")
             else:
-                result = QueryExecutor.execute_query("SELECT * FROM employees WHERE status = 1")
+                result = QueryExecutor.execute_query("SELECT * FROM employees")
             self.conn.disconnect()
             columns = ["id", "name", "identification_num", "status"]
             result = [dict(zip(columns, row)) for row in result]
@@ -44,12 +44,16 @@ class employees:
         
     def updateemployees(self, id, employeesname, identification_num, status):
         try:
-            self.conn.connect()
-            pyodbc_connection = self.conn.connection
-            DataManipulator = self.cs.SQLServerDataManipulator(pyodbc_connection)
-            DataManipulator.update(f"UPDATE employees SET name = '{employeesname}', identification_num = '{identification_num}', status = {status} WHERE id = {id}")
-            self.conn.disconnect()
-            return True
+            #logger.info(len(self.getemployees(id)))
+            if len(self.getemployees(id)) == 1:
+                self.conn.connect()
+                pyodbc_connection = self.conn.connection
+                DataManipulator = self.cs.SQLServerDataManipulator(pyodbc_connection)
+                DataManipulator.update(f"UPDATE employees SET name = '{employeesname}', identification_num = '{identification_num}', status = {status} WHERE id = {id}")
+                self.conn.disconnect()
+                return True
+            else:
+                return False
         except Exception as e:
             logger.error(f"Insertemployees - Error: {e}", exc_info=True)  # Log del error con traza
             return jsonify(error=f"Error interno: {e}"), 500

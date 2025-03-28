@@ -80,12 +80,22 @@ def test():
 
 # Ruta para obtener los empleados.
 @app.route('/employees', methods=['GET'])
-def eployees():
+@app.route('/employees/<int:id_employee>', methods=['GET']) 
+def eployees(id_employee = None):
     try:
         from classes.employees import employees
         employees = employees()
-        employees = employees.getemployees()
-        return employees, 200
+        employees = employees.getemployees(id=id_employee)
+        
+        if len(employees) == 1:
+            return employees[0], 200
+        elif len(employees) == 0:
+            if id_employee:
+                return jsonify(error=f"El empleado {id_employee} no existe.")
+            else:
+                return jsonify(error=f"No hay empleados registrados.")
+        else:
+            return employees, 200
     except Exception as e:
         logging.error(f"Endpoint /employees: {e}")
         return jsonify(error=str(e)), 500
@@ -99,7 +109,7 @@ def addemployee():
         status = request.json.get('status')
 
          # Validar que los datos estén presentes
-        if not all([name, identification_num, status]):
+        if not all([name, identification_num is not None, status]):
             return jsonify(error="Faltan campos obligatorios"), 400
         
         from classes.employees import employees
@@ -122,18 +132,18 @@ def updateemployee():
         status = data.get('status')
 
         # Validar que los datos estén presentes
-        if not all([id, name, identification_num, status is not None]):
+        if not all([id, name, identification_num is not None, status is not None]):
             return jsonify(error="Faltan campos obligatorios"), 400
 
         # Llamar a la lógica de negocio para actualizar el empleado
         from classes.employees import employees
         employee_manager = employees()
-        employee_manager.updateemployees(id, name, identification_num, status)
-
-        # Retornar una respuesta exitosa
-        return jsonify(mensaje=True), 200
+        if employee_manager.updateemployees(id, name, identification_num, status):
+            return jsonify(mensaje=True), 200
+        else:
+            return jsonify(error="No existe un empleado con el id proporcionado"), 404
     except Exception as e:
-        logging.error(f"Endpoint /employees: {e}")
+        logging.error(f"Endpoint /updateemployee: {e}")
         return jsonify(error=str(e)), 500
 
 ''' FINAL SECCION EMPLEADO '''
@@ -147,7 +157,10 @@ def promotionstypes():
         from classes.promotions import promotions
         promotions = promotions()
         promotions = promotions.getpromotionstypes()
-        return promotions, 200
+        if len(promotions) > 1:
+            return promotions, 200
+        else:
+            return jsonify(error=f"No existen tipos de promociones."), 404
     except Exception as e:
         logging.error(f"Endpoint /employees: {e}")
         return jsonify(error=str(e)), 500
@@ -189,47 +202,58 @@ def addpromotion():
         
         from classes.promotions import promotions
         promotions = promotions()
-        promotions.insertpromotions(description, type, qrtype, expiration_date, amount_qr, status)
-        return jsonify(mensaje=True), 200
+        return promotions.insertpromotions(description, type, qrtype, expiration_date, amount_qr, status)
     except Exception as e:
         logging.error(f"Endpoint /addpromotion: {e}")
         return jsonify(error=str(e)), 500
 
 # Ruta para obtener las promociones.
 @app.route('/getpromotions', methods=['GET'])
-def getpromotions():
+@app.route('/getpromotions/<int:id>', methods=['GET'])
+def getpromotions(id=None):
     try:
         from classes.promotions import promotions
         promotions = promotions()
-        promotions = promotions.getpromotions()
-        return promotions, 200
+        promotions = promotions.getpromotions(id)
+
+        if(len(promotions) == 1):
+            return promotions[0], 200
+        elif len(promotions) == 0:
+            if id:
+                return jsonify(error=f"La promocion {id} no existe.")
+            else:
+                return jsonify(error=f"No hay promociones registradas.")
+        else:
+            return promotions, 200
     except Exception as e:
         logging.error(f"Endpoint /getpromotions: {e}")
         return jsonify(error=str(e)), 500
 
-# Editar empleado.
+# Editar promocion.
 @app.route('/updatepromotions', methods=['POST'])
 def updatepromotions():
     try:
         # Obtener los datos del cuerpo de la solicitud
         data = request.json
         id = data.get('id')
+        description = data.get('description')
         expiration_date = data.get('expiration_date')
         status = data.get('status')
 
         # Validar que los datos estén presentes
-        # if not all([id, expiration_date, id_employee, status]):
-        #     return jsonify(error="Faltan campos obligatorios"), 400
+        logger.info(f"{id} {description} {expiration_date} {status}")
+        if not all([id, description, expiration_date, status is not None]):
+            return jsonify(error="Faltan campos obligatorios"), 400
 
         # Llamar a la lógica de negocio para actualizar el empleado
         from classes.promotions import promotions
         promotions_manager = promotions()
-        promotions_manager.updatepromotions(id, expiration_date, status)
-
-        # Retornar una respuesta exitosa
-        return jsonify(mensaje=True), 200
+        if promotions_manager.updatepromotions(id, description, expiration_date, status):
+            return jsonify(mensaje=True), 200
+        else:
+            return jsonify(error="No existe promocion con la id proporcionada"), 404
     except Exception as e:
-        logging.error(f"Endpoint /employees: {e}")
+        logging.error(f"Endpoint /updatepromotions: {e}")
         return jsonify(error=str(e)), 500
 
 @app.route('/addpromotionemployee', methods=['POST']) # tengo que hacer tabla empleados promociones porque una promocion puede tener varios empleados.
@@ -247,10 +271,7 @@ def addpromotionemployee():
         from classes.promotions import promotions
         promotions = promotions()
         response = promotions.insertpromotionemployee(id_promotion, id_employee, amount)
-        if response:
-            return jsonify(mensaje=True), 200
-        else:
-            return jsonify(mensaje=f"No es posible asignar, la cantidad {amount} excede limite. Intente asignar menos."), 200
+        return response
     except Exception as e:
         logging.error(f"Endpoint /addpromotion: {e}")
         return jsonify(error=str(e)), 500
@@ -277,10 +298,7 @@ def addproduct():
         from classes.products import products
         product = products()
         resp = product.insertproducts(id_promotion, id_product, description_prod, amount_prod, price_prod)
-        if(resp):
-            return jsonify(mensaje=True), 200
-        else:
-            return jsonify(mensaje=f"La promocion {id_promotion} no existe."), 200
+        return resp
     except Exception as e:
         logging.error(f"Endpoint /addpromotion: {e}")
         return jsonify(error=str(e)), 500
@@ -291,8 +309,8 @@ def getproducts(textQR):
     try:
         from classes.products import products
         product = products()
-        product = product.getproducts(textQR)
-        return product[0], 200
+        product = product.getproducts(textQR = textQR)
+        return product
     except Exception as e:
         logging.error(f"Endpoint /getproducts: {e}")
         return jsonify(error=str(e)), 500
@@ -349,9 +367,7 @@ def generate_qr():
 def addqr():
     try:
         data = request.json
-        #type = data.get('type')
         idpromocion = data.get('idpromocion')
-        #id_employee = data.get('id_employee')
 
         # Validar que los datos estén presentes
         if not all([idpromocion]):
@@ -360,48 +376,59 @@ def addqr():
         from classes.generateQr import qr
         from classes.promotions import promotions
         promotions = promotions()
-        promotionsget = promotions.getpromotions(idpromocion)[0]
+        promotionsE = promotions.getpromotions(idpromocion)
         
-        type = promotionsget["qrtype"]
-        amount_qr = promotionsget["amount_qr"]
-        qr_amount_generated = promotionsget["qr_amount_generated"]
+        if len(promotionsE) == 1:
+            promotionsget = promotionsE[0]
 
-        reimprimir = None
-        if type == 1:
-            if qr_amount_generated == 1:
-                reimprimir = True
-        elif type == 2:
-            if not qr_amount_generated < amount_qr:
-                reimprimir = True
+            type = promotionsget["qrtype"]
+            amount_qr = promotionsget["amount_qr"]
+            qr_amount_generated = promotionsget["qr_amount_generated"]
 
-        vencimiento = promotionsget["expiration_date"]
-        employee_amount = promotions.getpromotionemployee(idpromocion)
+            reimprimir = None
+            if type == 1:
+                if qr_amount_generated == 1:
+                    reimprimir = True
+            elif type == 2:
+                if not qr_amount_generated < amount_qr:
+                    reimprimir = True
 
-        insertQr = qr()
-        # # resp = insertQr.insertQr(textQR, type, idpromocion, id_employee)
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for i in employee_amount:
-                for e in range(int(i["amount"])):
-                    if type == 1:
-                        [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir)
-                    else:
-                        [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir, e)
+            vencimiento = promotionsget["expiration_date"]
+            employee_amount = promotions.getpromotionemployee(idpromocion)
 
-                    if img_buffer:
-                        # Agregar la imagen al ZIP dentro de la carpeta del beneficiario
-                        zip_file.writestr(f'{name_employee}/{textQR}.jpg', img_buffer.getvalue())
-                    else:
-                        return jsonify(error=f"Error al generar el QR para el {name_employee}"), 500
-        zip_buffer.seek(0)  # Rebobinar el buffer al inicio
+            insertQr = qr()
+            # # resp = insertQr.insertQr(textQR, type, idpromocion, id_employee)
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for i in employee_amount:
+                    logger.info(f"{i}")
+                    for e in range(int(i["amount"])):
+                        logger.info(f"{e}")
+                        if type == 1:
+                            [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir)
+                        else:
+                            [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir, e)
+                            
+                        #logger.info(f"{img_buffer} - {name_employee} - {textQR}")
 
-        # Devolver el ZIP como respuesta para descargar
-        return send_file(
-            zip_buffer,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name='qr_images.zip'  # Nombre del archivo ZIP al descargar
-        )
+                        if img_buffer:
+                            # Agregar la imagen al ZIP dentro de la carpeta del beneficiario
+                            zip_file.writestr(f'{name_employee}/{textQR}.jpg', img_buffer.getvalue())
+                        else:
+                            if not name_employee:
+                                return jsonify(error=f"La promocion no cuenta con producto asociado."), 404
+                            else:
+                                return jsonify(error=f"Error al generar el QR para el {name_employee}"), 500
+            zip_buffer.seek(0)  # Rebobinar el buffer al inicio
+
+            # Devolver el ZIP como respuesta para descargar
+            return send_file(
+                zip_buffer,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name='qr_images.zip'  # Nombre del archivo ZIP al descargar
+            )
+        return jsonify(error=f"No existe la promocion {idpromocion}"), 404
     except Exception as e:
         logging.error(f"Endpoint /addqr: {e}")
         return jsonify(error=str(e)), 500
@@ -441,7 +468,7 @@ def getQr(textQR, id_promotion=None):
         from classes.generateQr import qr
         getQr = qr()
         getQr = getQr.getQR(idpromocion=id_promotion, textQr=textQR)
-        return getQr, 200
+        return getQr
     except Exception as e:
         logging.error(f"Endpoint /getQr: {e}")
         return jsonify(error=str(e)), 500

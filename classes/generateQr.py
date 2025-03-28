@@ -14,6 +14,10 @@ class qr:
         import classes.connectionSQL as cs
         self.cs = cs
         self.conn = self.cs.SQLServerConnection(self.conf.server, self.conf.database, self.conf.username, self.conf.password, self.conf.port)
+        from classes.promotions import promotions
+        self.promotions = promotions()
+        from classes.employees import employees
+        self.employees = employees()
 
     def generateQr(self, producto, codigo, vencimiento, beneficiario):
         try:
@@ -58,17 +62,16 @@ class qr:
         try:
             import random
             from classes.products import products
-            from classes.employees import employees
-
             products = products()
-            employees = employees()
-            
-            products = products.getproducts(idpromocion)
-            #logger.info(products)
-            producto = products[0]["description_prod"]
-            beneficiario = employees.getemployees(id_employee)[0]["name"]            
+              
+            products = products.getproducts(id_promotion=idpromocion)
+            logger.info(f"{products}")
+            beneficiario = self.employees.getemployees(id=id_employee)[0]["name"]            
 
-            if(products or len(products) > 0): # Tambien me falta validar si la promocion no esta vencida y que su status sea 1
+            logger.info(f"{len(products)}")
+            if(len(products) > 0): # Tambien me falta validar si la promocion no esta vencida y que su status sea 1
+                logger.info(products)
+                producto = products[0]["description_prod"]
                 if not reimprimir:
                     textQR = list("A47B3F7NG34DFS345ASBLJKD4560985NF")
                     random.shuffle(textQR)
@@ -81,20 +84,36 @@ class qr:
                     self.conn.disconnect()
                 else:
                     if type == 1:
-                        textQR = self.getQR(idpromocion, id_employee = id_employee)[0]["textQR"]
+                        textQR = self.getQR(idpromocion = idpromocion, id_employee = id_employee)[0]["textQR"]
                     else:
-                        textQR = self.getQR(idpromocion, id_employee = id_employee)[posicion]["textQR"]
+                        textQR = self.getQR(idpromocion = idpromocion, id_employee = id_employee)[posicion]["textQR"]
 
                 buffer = self.generateQr(producto, textQR, vencimiento[:-9], beneficiario)
                 return [buffer, beneficiario, textQR]
             else:
-                return False
+                return [False, False, False]
         except Exception as e:
             logger.error(f"InsertQr - Error: {e}", exc_info=True)  # Log del error con traza
             return jsonify(error=f"Error interno: {e}"), 500
 
     def getQR(self, idpromocion = None, id_employee = None, textQr = None):
         try:
+            if idpromocion:
+                promotions = self.promotions.getpromotions(idpromocion)
+                if len(promotions) == 1:
+                    if not promotions[0]["status"]:
+                        return jsonify(mensaje=f"La promocion {idpromocion} no se encuentra activa."), 404
+                else:
+                    return jsonify(mensaje=f"La promocion {idpromocion} no existe."), 404
+                          
+            if id_employee:
+                employee = self.employees.getemployees(id=id_employee)
+                if len(employee) == 1:
+                    if not employee[0]["status"]:
+                        return jsonify(mensaje=f"El empleado {id_employee} no se encuentra activo."),
+                else:
+                    return jsonify(mensaje=f"El empleado {id_employee} no existe."), 404
+
             self.conn.connect()
             pyodbc_connection = self.conn.connection
             QueryExecutor = self.cs.SQLServerQueryExecutor(pyodbc_connection)
@@ -109,7 +128,10 @@ class qr:
                 self.conn.disconnect()
                 columns = ["idpromocion", "status", "amount_burn"]
                 result = [{**dict(zip(columns, row))} for row in result]
-                return result[0]
+                if result:
+                    return result[0], 200
+                else:
+                    return jsonify(error=f"El QR {textQr} no existe."), 404
             else:
                 if idpromocion:
                     result = QueryExecutor.execute_query(f"SELECT * FROM qr_data WHERE idpromocion = {idpromocion}")
@@ -124,14 +146,14 @@ class qr:
                     }
                     for row in result
                 ]
-                return result
+                return result, 200
         except Exception as e:
             logger.error(f"GetQR - Error: {e}", exc_info=True)  # Log del error con traza
             return jsonify(error=f"Error interno: {e}"), 500
         
     def insertQrlog(self, store, cash_desk, id_qr):
         try:
-            id_promotion_result = self.getQR(None, textQr=id_qr)
+            id_promotion_result = self.getQR(textQr=id_qr)
             logger.info(id_promotion_result[0])
             
             if id_promotion_result:
