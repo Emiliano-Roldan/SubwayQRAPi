@@ -18,6 +18,8 @@ class qr:
         self.promotions = promotions()
         from classes.employees import employees
         self.employees = employees()
+        from classes.products import products
+        self.products = products()
 
     def generateQr(self, producto, codigo, vencimiento, beneficiario):
         try:
@@ -61,11 +63,8 @@ class qr:
     def insertQr(self, type, idpromocion, id_employee, vencimiento, reimprimir, posicion=None):
         try:
             import random
-            from classes.products import products
-            products = products()
-              
-            products = products.getproducts(id_promotion=idpromocion)
-            logger.info(f"{products}")
+
+            products = self.products.getproducts(id_promotion=idpromocion)
             beneficiario = self.employees.getemployees(id=id_employee)[0]["name"]            
 
             logger.info(f"{len(products)}")
@@ -102,17 +101,17 @@ class qr:
                 promotions = self.promotions.getpromotions(idpromocion)
                 if len(promotions) == 1:
                     if not promotions[0]["status"]:
-                        return jsonify(mensaje=f"La promocion {idpromocion} no se encuentra activa."), 404
+                        return jsonify(error=f"La promocion {idpromocion} no se encuentra activa."), 404
                 else:
-                    return jsonify(mensaje=f"La promocion {idpromocion} no existe."), 404
+                    return jsonify(error=f"La promocion {idpromocion} no existe."), 404
                           
             if id_employee:
                 employee = self.employees.getemployees(id=id_employee)
                 if len(employee) == 1:
                     if not employee[0]["status"]:
-                        return jsonify(mensaje=f"El empleado {id_employee} no se encuentra activo."),
+                        return jsonify(error=f"El empleado {id_employee} no se encuentra activo."),
                 else:
-                    return jsonify(mensaje=f"El empleado {id_employee} no existe."), 404
+                    return jsonify(error=f"El empleado {id_employee} no existe."), 404
 
             self.conn.connect()
             pyodbc_connection = self.conn.connection
@@ -164,6 +163,7 @@ class qr:
                 from classes.promotions import promotions
                 promotions = promotions()
                 promotion = promotions.getpromotions(id_promotion)
+                
                 if promotion[0]["status"]:
                     amount_qr = promotion[0]["amount_qr"]
                     qr_type = promotion[0]["qrtype"]
@@ -175,7 +175,6 @@ class qr:
                     pyodbc_connection = self.conn.connection
                     DataManipulator = self.cs.SQLServerDataManipulator(pyodbc_connection)
                     
-                    #logger.info(expiration_date)
                     if (status_qr == True and current_date <= expiration_date):
                         if( (qr_type == 1 and burned_qr <= amount_qr) or (qr_type == 2 and burned_qr < 1) ): #1 unico, 2 diferentes
                             DataManipulator.insert(f"INSERT INTO qr_log VALUES (GETDATE(), '{store}', '{cash_desk}', '{id_qr}')")
@@ -184,6 +183,7 @@ class qr:
 
                             # Query para bloquear la promocion.
                             if burned_qr_promotion == amount_qr-1:
+                                product = self.products.getproducts(id_promotion=id_promotion)
                                 DataManipulator.update(f"UPDATE promotions SET status = 0  WHERE id = {id_promotion}")
                                 if qr_type == 1:
                                     DataManipulator.update(f"UPDATE qr_data SET status = 0 WHERE textQR = '{id_qr}'")
@@ -193,8 +193,8 @@ class qr:
                                 DataManipulator.update(f"UPDATE qr_data SET status = 0 WHERE textQR = '{id_qr}'")
 
                             self.conn.disconnect()
-                            
-                            return jsonify(mensaje=True), 200
+                            logger.info(id_promotion)
+                            return product
                     else:
                         return jsonify(error="QR Vencido o bloqueado."), 404
                 else:

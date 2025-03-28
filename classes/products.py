@@ -46,9 +46,9 @@ class products:
                 promotions = self.promotions.getpromotions(id_promotion)
                 if len(promotions) == 1:
                     if not promotions[0]["status"]:
-                        return jsonify(mensaje=f"La promocion {id_promotion} no se encuentra activa."), 404
+                        return jsonify(error=f"La promocion {id_promotion} no se encuentra activa."), 404
                 else:
-                    return jsonify(mensaje=f"La promocion {id_promotion} no existe."), 404
+                    return jsonify(error=f"La promocion {id_promotion} no existe."), 404
             
             if textQR:
                 from classes.generateQr import qr
@@ -56,10 +56,10 @@ class products:
                 qr = qr.getQR(textQr=textQR)
                 logger.info(qr[1])
                 if qr[1] != 200:
-                    return jsonify(mensaje=f"El QR {textQR} no existe."), 404
+                    return jsonify(error=f"El QR {textQR} no existe."), 404
                 else:
                     if not qr[0]["status"]:
-                        return jsonify(mensaje=f"El QR {id_promotion} no se encuentra activo."), 404
+                        return jsonify(error=f"El QR {id_promotion} no se encuentra activo."), 404
 
             self.conn.connect()
             pyodbc_connection = self.conn.connection
