@@ -381,53 +381,55 @@ def addqr():
         if len(promotionsE) == 1:
             promotionsget = promotionsE[0]
 
-            type = promotionsget["qrtype"]
-            amount_qr = promotionsget["amount_qr"]
-            qr_amount_generated = promotionsget["qr_amount_generated"]
+            if promotionsget["status"]:
+                type = promotionsget["qrtype"]
+                amount_qr = promotionsget["amount_qr"]
+                qr_amount_generated = promotionsget["qr_amount_generated"]
 
-            reimprimir = None
-            if type == 1:
-                if qr_amount_generated == 1:
-                    reimprimir = True
-            elif type == 2:
-                if not qr_amount_generated < amount_qr:
-                    reimprimir = True
+                reimprimir = None
+                if type == 1:
+                    if qr_amount_generated == 1:
+                        reimprimir = True
+                elif type == 2:
+                    if not qr_amount_generated < amount_qr:
+                        reimprimir = True
 
-            vencimiento = promotionsget["expiration_date"]
-            employee_amount = promotions.getpromotionemployee(idpromocion)
+                vencimiento = promotionsget["expiration_date"]
+                employee_amount = promotions.getpromotionemployee(idpromocion)
 
-            insertQr = qr()
-            # # resp = insertQr.insertQr(textQR, type, idpromocion, id_employee)
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                for i in employee_amount:
-                    logger.info(f"{i}")
-                    for e in range(int(i["amount"])):
-                        logger.info(f"{e}")
-                        if type == 1:
-                            [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir)
-                        else:
-                            [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir, e)
-                            
-                        #logger.info(f"{img_buffer} - {name_employee} - {textQR}")
-
-                        if img_buffer:
-                            # Agregar la imagen al ZIP dentro de la carpeta del beneficiario
-                            zip_file.writestr(f'{name_employee}/{textQR}.jpg', img_buffer.getvalue())
-                        else:
-                            if not name_employee:
-                                return jsonify(error=f"La promocion no cuenta con producto asociado."), 404
+                insertQr = qr()
+                # # resp = insertQr.insertQr(textQR, type, idpromocion, id_employee)
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    for i in employee_amount:
+                        logger.info(f"{i}")
+                        for e in range(int(i["amount"])):
+                            logger.info(f"{e}")
+                            if type == 1:
+                                [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir)
                             else:
-                                return jsonify(error=f"Error al generar el QR para el {name_employee}"), 500
-            zip_buffer.seek(0)  # Rebobinar el buffer al inicio
+                                [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir, e)
+                                
+                            #logger.info(f"{img_buffer} - {name_employee} - {textQR}")
 
-            # Devolver el ZIP como respuesta para descargar
-            return send_file(
-                zip_buffer,
-                mimetype='application/zip',
-                as_attachment=True,
-                download_name='qr_images.zip'  # Nombre del archivo ZIP al descargar
-            )
+                            if img_buffer:
+                                # Agregar la imagen al ZIP dentro de la carpeta del beneficiario
+                                zip_file.writestr(f'{name_employee}/{textQR}.jpg', img_buffer.getvalue())
+                            else:
+                                if not name_employee:
+                                    return jsonify(error=f"La promocion no cuenta con producto asociado."), 404
+                                else:
+                                    return jsonify(error=f"Error al generar el QR para el {name_employee}"), 500
+                zip_buffer.seek(0)  # Rebobinar el buffer al inicio
+
+                # Devolver el ZIP como respuesta para descargar
+                return send_file(
+                    zip_buffer,
+                    mimetype='application/zip',
+                    as_attachment=True,
+                    download_name='qr_images.zip'  # Nombre del archivo ZIP al descargar
+                )
+            return jsonify(error=f"La promocion {idpromocion} no se encuentra actvia."), 404
         return jsonify(error=f"No existe la promocion {idpromocion}"), 404
     except Exception as e:
         logging.error(f"Endpoint /addqr: {e}")
@@ -452,10 +454,7 @@ def logqr():
         insertQr = qr()
         result = insertQr.insertQrlog(store, cash_desk, id_qr)
 
-        if result == True:
-            return jsonify(mensaje=True), 200
-        else:
-            return jsonify(mensaje=result), 200
+        return result
     except Exception as e:
         logging.error(f"Endpoint /addqr: {e}")
         return jsonify(error=str(e)), 500

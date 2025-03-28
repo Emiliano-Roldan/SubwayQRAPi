@@ -154,9 +154,8 @@ class qr:
     def insertQrlog(self, store, cash_desk, id_qr):
         try:
             id_promotion_result = self.getQR(textQr=id_qr)
-            logger.info(id_promotion_result[0])
             
-            if id_promotion_result:
+            if id_promotion_result[1] != 404:
                 from datetime import datetime
                 id_promotion = id_promotion_result[0]["idpromocion"]
                 status_qr = id_promotion_result[0]["status"]
@@ -165,40 +164,43 @@ class qr:
                 from classes.promotions import promotions
                 promotions = promotions()
                 promotion = promotions.getpromotions(id_promotion)
-                amount_qr = promotion[0]["amount_qr"]
-                qr_type = promotion[0]["qrtype"]
-                expiration_date = datetime.strptime(promotion[0]["expiration_date"], "%d-%m-%Y %H:%M:%S")
-                current_date = datetime.now()
-                burned_qr_promotion = promotion[0]["burned_qr"]
-                
-                self.conn.connect()
-                pyodbc_connection = self.conn.connection
-                DataManipulator = self.cs.SQLServerDataManipulator(pyodbc_connection)
-                
-                #logger.info(expiration_date)
-                if (status_qr == True and current_date <= expiration_date):
-                    if( (qr_type == 1 and burned_qr <= amount_qr) or (qr_type == 2 and burned_qr < 1) ): #1 unico, 2 diferentes
-                        DataManipulator.insert(f"INSERT INTO qr_log VALUES (GETDATE(), '{store}', '{cash_desk}', '{id_qr}')")
-                        DataManipulator.update(f"UPDATE qr_data SET amount_burn = amount_burn + 1 WHERE textQR = '{id_qr}'")
-                        DataManipulator.update(f"UPDATE promotions SET burned_qr = burned_qr + 1 WHERE id = {id_promotion}")
+                if promotion[0]["status"]:
+                    amount_qr = promotion[0]["amount_qr"]
+                    qr_type = promotion[0]["qrtype"]
+                    expiration_date = datetime.strptime(promotion[0]["expiration_date"], "%d-%m-%Y %H:%M:%S")
+                    current_date = datetime.now()
+                    burned_qr_promotion = promotion[0]["burned_qr"]
+                    
+                    self.conn.connect()
+                    pyodbc_connection = self.conn.connection
+                    DataManipulator = self.cs.SQLServerDataManipulator(pyodbc_connection)
+                    
+                    #logger.info(expiration_date)
+                    if (status_qr == True and current_date <= expiration_date):
+                        if( (qr_type == 1 and burned_qr <= amount_qr) or (qr_type == 2 and burned_qr < 1) ): #1 unico, 2 diferentes
+                            DataManipulator.insert(f"INSERT INTO qr_log VALUES (GETDATE(), '{store}', '{cash_desk}', '{id_qr}')")
+                            DataManipulator.update(f"UPDATE qr_data SET amount_burn = amount_burn + 1 WHERE textQR = '{id_qr}'")
+                            DataManipulator.update(f"UPDATE promotions SET burned_qr = burned_qr + 1 WHERE id = {id_promotion}")
 
-                        # Query para bloquear la promocion.
-                        if burned_qr_promotion == amount_qr-1:
-                            DataManipulator.update(f"UPDATE promotions SET status = 0  WHERE id = {id_promotion}")
-                            if qr_type == 1:
+                            # Query para bloquear la promocion.
+                            if burned_qr_promotion == amount_qr-1:
+                                DataManipulator.update(f"UPDATE promotions SET status = 0  WHERE id = {id_promotion}")
+                                if qr_type == 1:
+                                    DataManipulator.update(f"UPDATE qr_data SET status = 0 WHERE textQR = '{id_qr}'")
+
+                            # Query para bloquear el QR.
+                            if qr_type == 2:
                                 DataManipulator.update(f"UPDATE qr_data SET status = 0 WHERE textQR = '{id_qr}'")
 
-                        # Query para bloquear el QR.
-                        if qr_type == 2:
-                            DataManipulator.update(f"UPDATE qr_data SET status = 0 WHERE textQR = '{id_qr}'")
-
-                        self.conn.disconnect()
-                        
-                        return True
+                            self.conn.disconnect()
+                            
+                            return jsonify(mensaje=True), 200
+                    else:
+                        return jsonify(error="QR Vencido o bloqueado."), 404
                 else:
-                    return "QR Vencido o bloqueado."
+                    return jsonify(error=f"La promoción {id_promotion} no se encuentra activa."), 404
             else:
-                return "No se encontró QR."            
+                return jsonify(error=f"El QR {id_qr} no existe."), 404   
         except Exception as e:
             logger.error(f"InsertQr - Error: {e}", exc_info=True)  # Log del error con traza
             return jsonify(error=f"Error interno: {e}"), 500        
