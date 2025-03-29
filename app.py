@@ -385,6 +385,7 @@ def addqr():
                 type = promotionsget["qrtype"]
                 amount_qr = promotionsget["amount_qr"]
                 qr_amount_generated = promotionsget["qr_amount_generated"]
+                description = promotionsget["description"]
 
                 reimprimir = None
                 if type == 1:
@@ -402,9 +403,7 @@ def addqr():
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                     for i in employee_amount:
-                        logger.info(f"{i}")
                         for e in range(int(i["amount"])):
-                            logger.info(f"{e}")
                             if type == 1:
                                 [img_buffer, name_employee, textQR] = insertQr.insertQr(type, idpromocion, i["id_employee"], vencimiento, reimprimir)
                             else:
@@ -427,7 +426,7 @@ def addqr():
                     zip_buffer,
                     mimetype='application/zip',
                     as_attachment=True,
-                    download_name='qr_images.zip'  # Nombre del archivo ZIP al descargar
+                    download_name=description+'.zip'  # Nombre del archivo ZIP al descargar
                 )
             return jsonify(error=f"La promocion {idpromocion} no se encuentra actvia."), 404
         return jsonify(error=f"No existe la promocion {idpromocion}"), 404

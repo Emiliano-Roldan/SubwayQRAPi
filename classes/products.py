@@ -54,12 +54,9 @@ class products:
                 from classes.generateQr import qr
                 qr = qr()
                 qr = qr.getQR(textQr=textQR)
-                logger.info(qr[1])
+                logger.info(qr)
                 if qr[1] != 200:
-                    return jsonify(error=f"El QR {textQR} no existe."), 404
-                else:
-                    if not qr[0]["status"]:
-                        return jsonify(error=f"El QR {id_promotion} no se encuentra activo."), 404
+                    return jsonify(error=qr[0].get_json()["error"]), 404
 
             self.conn.connect()
             pyodbc_connection = self.conn.connection
