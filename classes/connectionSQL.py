@@ -22,7 +22,7 @@ class SQLServerConnection:
                 f'PWD={self.password}'
             )
         except pyodbc.Error as e:
-            logging.error(f"(SQLServerConnection - connect) - Error connecting to SQL Server: {str(e)}")
+            logger.error(f"(SQLServerConnection - connect) - Error connecting to SQL Server: {str(e)}")
 
     def disconnect(self):
         if self.connection:
@@ -39,7 +39,7 @@ class SQLServerQueryExecutor:
             rows = cursor.fetchall()
             return rows
         except pyodbc.Error as e:
-            logging.error(f"(SQLServerQueryExecutor - execute_query) - Error executing query: {str(e)}")
+            logger.error(f"(SQLServerQueryExecutor - execute_query) - Error executing query: {str(e)}")
 
 class SQLServerDataManipulator:
     def __init__(self, connection):
@@ -51,7 +51,7 @@ class SQLServerDataManipulator:
             cursor.execute(query)
             self.connection.commit()
         except pyodbc.Error as e:
-            logging.error(f"(SQLServerDataManipulator - execute_non_query) - Error executing non-query: {str(e)}")
+            logger.error(f"(SQLServerDataManipulator - execute_non_query) - Error executing non-query: {str(e)}")
 
     def insert(self, query):
         self.execute_non_query(query)

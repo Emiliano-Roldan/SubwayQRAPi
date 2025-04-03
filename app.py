@@ -58,7 +58,7 @@ def login():
         refresh_token = create_refresh_token(identity=username)
         return jsonify(access_token=access_token, refresh_token=refresh_token)
     except Exception as e:
-        logging.error(f"Endpoint /login: {e}")
+        logger.error(f"Endpoint /login: {e}")
         return jsonify(error=f"Error interno: {e}"), 500
 
 # Ruta para refrescar el token
@@ -97,7 +97,7 @@ def eployees(id_employee = None):
         else:
             return employees, 200
     except Exception as e:
-        logging.error(f"Endpoint /employees: {e}")
+        logger.error(f"Endpoint /employees: {e}")
         return jsonify(error=str(e)), 500
     
 # Insertar empleado.
@@ -117,7 +117,7 @@ def addemployee():
         employees = employees.insertemployees(name, identification_num, status)
         return jsonify(mensaje=True), 200
     except Exception as e:
-        logging.error(f"Endpoint /employees: {e}")
+        logger.error(f"Endpoint /employees: {e}")
         return jsonify(error=str(e)), 500
 
 # Editar empleado.
@@ -143,7 +143,7 @@ def updateemployee():
         else:
             return jsonify(error="No existe un empleado con el id proporcionado"), 404
     except Exception as e:
-        logging.error(f"Endpoint /updateemployee: {e}")
+        logger.error(f"Endpoint /updateemployee: {e}")
         return jsonify(error=str(e)), 500
 
 ''' FINAL SECCION EMPLEADO '''
@@ -157,12 +157,12 @@ def promotionstypes():
         from classes.promotions import promotions
         promotions = promotions()
         promotions = promotions.getpromotionstypes()
-        if len(promotions) > 1:
+        if len(promotions) >= 1:
             return promotions, 200
         else:
             return jsonify(error=f"No existen tipos de promociones."), 404
     except Exception as e:
-        logging.error(f"Endpoint /employees: {e}")
+        logger.error(f"Endpoint /employees: {e}")
         return jsonify(error=str(e)), 500
     
 # Insertar tipo promociones.
@@ -181,7 +181,7 @@ def addpromotiontype():
         promotions.insertpromotionstype(description)
         return jsonify(mensaje=True), 200
     except Exception as e:
-        logging.error(f"Endpoint /employees: {e}")
+        logger.error(f"Endpoint /employees: {e}")
         return jsonify(error=str(e)), 500
 
 # Insertar promociones.
@@ -204,7 +204,7 @@ def addpromotion():
         promotions = promotions()
         return promotions.insertpromotions(description, type, qrtype, expiration_date, amount_qr, status)
     except Exception as e:
-        logging.error(f"Endpoint /addpromotion: {e}")
+        logger.error(f"Endpoint /addpromotion: {e}")
         return jsonify(error=str(e)), 500
 
 # Ruta para obtener las promociones.
@@ -226,7 +226,7 @@ def getpromotions(id=None):
         else:
             return promotions, 200
     except Exception as e:
-        logging.error(f"Endpoint /getpromotions: {e}")
+        logger.error(f"Endpoint /getpromotions: {e}")
         return jsonify(error=str(e)), 500
 
 # Editar promocion.
@@ -253,7 +253,7 @@ def updatepromotions():
         else:
             return jsonify(error="No existe promocion con la id proporcionada"), 404
     except Exception as e:
-        logging.error(f"Endpoint /updatepromotions: {e}")
+        logger.error(f"Endpoint /updatepromotions: {e}")
         return jsonify(error=str(e)), 500
 
 @app.route('/addpromotionemployee', methods=['POST']) # tengo que hacer tabla empleados promociones porque una promocion puede tener varios empleados.
@@ -273,7 +273,7 @@ def addpromotionemployee():
         response = promotions.insertpromotionemployee(id_promotion, id_employee, amount)
         return response
     except Exception as e:
-        logging.error(f"Endpoint /addpromotion: {e}")
+        logger.error(f"Endpoint /addpromotion: {e}")
         return jsonify(error=str(e)), 500
     
 ''' FINAL SECCION PROMOCIONES'''
@@ -300,7 +300,7 @@ def addproduct():
         resp = product.insertproducts(id_promotion, id_product, description_prod, amount_prod, price_prod)
         return resp
     except Exception as e:
-        logging.error(f"Endpoint /addpromotion: {e}")
+        logger.error(f"Endpoint /addpromotion: {e}")
         return jsonify(error=str(e)), 500
 
 # Ruta para obtener los productos de las promociones.
@@ -312,7 +312,7 @@ def getproducts(textQR):
         product = product.getproducts(textQR = textQR)
         return product
     except Exception as e:
-        logging.error(f"Endpoint /getproducts: {e}")
+        logger.error(f"Endpoint /getproducts: {e}")
         return jsonify(error=str(e)), 500
     
 ''' INICIO SECCION QR '''
@@ -431,7 +431,7 @@ def addqr():
             return jsonify(error=f"La promocion {idpromocion} no se encuentra actvia."), 404
         return jsonify(error=f"No existe la promocion {idpromocion}"), 404
     except Exception as e:
-        logging.error(f"Endpoint /addqr: {e}")
+        logger.error(f"Endpoint /addqr: {e}")
         return jsonify(error=str(e)), 500
 
 ### MAS ENDPOINT QUE NO TENGAN QUE VER CON EL LOG ####
@@ -455,7 +455,7 @@ def logqr():
 
         return result
     except Exception as e:
-        logging.error(f"Endpoint /addqr: {e}")
+        logger.error(f"Endpoint /addqr: {e}")
         return jsonify(error=str(e)), 500
 
 # Obtener los QR generados de X promocion.
@@ -468,7 +468,7 @@ def getQr(textQR, id_promotion=None):
         getQr = getQr.getQR(idpromocion=id_promotion, textQr=textQR)
         return getQr
     except Exception as e:
-        logging.error(f"Endpoint /getQr: {e}")
+        logger.error(f"Endpoint /getQr: {e}")
         return jsonify(error=str(e)), 500
    
 
